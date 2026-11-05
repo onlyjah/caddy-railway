@@ -1,3 +1,30 @@
+OnlyJah Caddy
+=============
+
+The shared Caddy image for OnlyJah projects, published as `ghcr.io/onlyjah/caddy:<version>`. It's built from Railway's official Caddy template (below) with Caddy pinned and these plugins compiled in:
+
+- `github.com/mholt/caddy-ratelimit` (rate limiting, maintained by Caddy's author)
+
+Pushing to `main` rebuilds and publishes the image (`.github/workflows/image.yml`). To change the Caddy version or the plugin list, edit `CADDY_VERSION` / `CADDY_PLUGINS` there.
+
+## Using it in a project
+
+Each project keeps its own gateway config in a `gateway/` folder in its own repo:
+
+```
+gateway/
+  Dockerfile        FROM ghcr.io/onlyjah/caddy:2.11.9
+                    COPY gateway/Caddyfile /etc/caddy/Caddyfile
+                    COPY gateway/env /etc/caddy/env
+  Caddyfile         routing and headers shared by every environment
+  env/prod.caddy    production hostnames
+  env/test.caddy    test hostnames, password prompt, noindex
+```
+
+`Caddyfile` does `import env/{$RAILWAY_ENVIRONMENT_NAME}.caddy`, so the same file serves `prod` and `test`. The Railway `caddy` service builds from that repo with Dockerfile path `gateway/Dockerfile` and watch path `gateway/**`. Railway terminates TLS, so Caddy listens on `:8080` and routes by hostname to `<service>.railway.internal`.
+
+---
+
 Caddy on Railway
 ================
 

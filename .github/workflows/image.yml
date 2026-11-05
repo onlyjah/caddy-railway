@@ -1,0 +1,44 @@
+name: Publish image
+
+on:
+  push:
+    branches: [main]
+    paths: [Dockerfile, build.sh, Caddyfile, www/**, .github/workflows/image.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  CADDY_VERSION: "2.11.9"
+  # Plugins compiled into the shared image. Keep this list short and official.
+  CADDY_PLUGINS: github.com/mholt/caddy-ratelimit
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            CADDY_RELEASE=${{ env.CADDY_VERSION }}
+            CADDY_PLUGINS=${{ env.CADDY_PLUGINS }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=OnlyJah shared Caddy ${{ env.CADDY_VERSION }} with rate limiting
+          tags: |
+            ghcr.io/onlyjah/caddy:${{ env.CADDY_VERSION }}
+            ghcr.io/onlyjah/caddy:latest
+      - name: Check the plugin is compiled in
+        run: docker run --rm ghcr.io/onlyjah/caddy:${{ env.CADDY_VERSION }} caddy list-modules | grep -x 'http.handlers.rate_limit'
